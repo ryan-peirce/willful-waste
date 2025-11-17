@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-table-ownership
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: fix-ownership
+        image: postgres:15-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Fixing ownership in orders database..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d orders <<EOF
+          ALTER TABLE IF EXISTS orders OWNER TO appuser;
+          ALTER SEQUENCE IF EXISTS orders_id_seq OWNER TO appuser;
+          GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser;
+          GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;
+          EOF
+          
+          echo "Fixing ownership in products database..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d products <<EOF
+          ALTER TABLE IF EXISTS products OWNER TO appuser;
+          ALTER SEQUENCE IF EXISTS products_id_seq OWNER TO appuser;
+          GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser;
+          GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;
+          EOF
+          
+          echo "Table ownership fixed successfully!"
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: host
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password

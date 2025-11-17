@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: recreate-databases
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: recreate-databases
+        image: postgres:15-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Dropping and recreating orders database..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d postgres <<EOF
+          DROP DATABASE IF EXISTS orders;
+          CREATE DATABASE orders OWNER appuser;
+          EOF
+          
+          echo "Dropping and recreating products database..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d postgres <<EOF
+          DROP DATABASE IF EXISTS products;
+          CREATE DATABASE products OWNER appuser;
+          EOF
+          
+          echo "Databases recreated successfully with appuser as owner!"
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: host
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password

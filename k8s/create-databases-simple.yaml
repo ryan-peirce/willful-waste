@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-databases
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: create-databases
+        image: postgres:15-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Creating databases and granting permissions..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d postgres <<EOF
+          CREATE DATABASE orders;
+          CREATE DATABASE products;
+          GRANT ALL PRIVILEGES ON DATABASE orders TO appuser;
+          GRANT ALL PRIVILEGES ON DATABASE products TO appuser;
+          
+          \c orders
+          GRANT ALL ON SCHEMA public TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO appuser;
+          
+          \c products
+          GRANT ALL ON SCHEMA public TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO appuser;
+          EOF
+          
+          echo "Databases created and permissions granted successfully!"
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: host
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password

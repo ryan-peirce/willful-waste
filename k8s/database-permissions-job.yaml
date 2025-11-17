@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grant-db-permissions
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: grant-permissions
+        image: postgres:15-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Granting permissions on orders database..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d orders <<EOF
+          GRANT ALL PRIVILEGES ON DATABASE orders TO appuser;
+          GRANT ALL ON SCHEMA public TO appuser;
+          GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser;
+          GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO appuser;
+          EOF
+          
+          echo "Granting permissions on products database..."
+          PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U postgres -d products <<EOF
+          GRANT ALL PRIVILEGES ON DATABASE products TO appuser;
+          GRANT ALL ON SCHEMA public TO appuser;
+          GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser;
+          GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO appuser;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO appuser;
+          EOF
+          
+          echo "Permissions granted successfully!"
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: host
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
