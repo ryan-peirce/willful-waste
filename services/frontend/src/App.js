@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import { reportError } from '@dash0/sdk-web';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -13,6 +14,27 @@ function App() {
   useEffect(() => {
     fetchProducts();
     fetchOrders();
+    
+    // Demo: Automatically report a JavaScript error to Dash0 on page load
+    // This demonstrates browser error tracking without user interaction
+    setTimeout(() => {
+      try {
+        // Simulate a realistic error scenario
+        const demoData = null;
+        // This will throw a TypeError
+        const result = demoData.someProperty.nestedValue;
+      } catch (error) {
+        reportError(error, {
+          context: 'Demo: Automatic JavaScript error on page load',
+          errorType: 'TypeError',
+          componentName: 'App',
+          lifecycle: 'useEffect',
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
+        });
+        console.log('Demo error reported to Dash0:', error.message);
+      }
+    }, 2000); // Report after 2 seconds to ensure Dash0 SDK is initialized
   }, []);
 
   const fetchProducts = async () => {
@@ -22,6 +44,9 @@ function App() {
       setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
+      reportError(error, {
+        context: 'Failed to fetch products from backend',
+      });
       showNotification('Failed to load products');
     }
   };
@@ -57,10 +82,21 @@ function App() {
         showNotification(`Ordered ${product.name}!`);
         fetchOrders();
       } else {
+        const errorMsg = `Order failed with status ${response.status}`;
+        reportError(errorMsg, {
+          context: 'Order creation failed',
+          productId: product.id,
+          productName: product.name,
+        });
         showNotification('Order failed');
       }
     } catch (error) {
       console.error('Error creating order:', error);
+      reportError(error, {
+        context: 'Network error while creating order',
+        productId: product.id,
+        productName: product.name,
+      });
       showNotification('Order failed');
     } finally {
       setLoading(false);

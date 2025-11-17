@@ -64,6 +64,19 @@ spec:
       default.replication.factor: 1
       min.insync.replicas: 1
       auto.create.topics.enable: true
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics
+          key: kafka-metrics-config.yml
+    template:
+      pod:
+        metadata:
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "9404"
+            prometheus.io/path: /metrics
   entityOperator:
     topicOperator:
       resources:

@@ -39,6 +39,12 @@ exports.createOrder = async (req, res, next) => {
     
     console.log(`Creating new order for product: ${productName}`);
     
+    // Demo: Simulate backend error for specific product
+    if (productId === 7 || productId === 999) {
+      console.error(`DEMO ERROR: Product ID ${productId} triggers intentional backend failure`);
+      throw new Error('Database connection timeout - this is a demo error for observability testing');
+    }
+    
     const order = await Order.create({
       productId,
       productName,
