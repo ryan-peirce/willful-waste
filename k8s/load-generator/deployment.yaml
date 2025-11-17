@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  labels:
+    app: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+      - name: load-generator
+        image: gcr.io/willful-waste/load-generator:latest
+        env:
+        - name: PRODUCT_SERVICE_URL
+          value: "http://product-service:8080"
+        - name: ORDER_SERVICE_URL
+          value: "http://order-service:3000"
+        - name: LOAD_PATTERN
+          value: "steady"
+        - name: REQUESTS_PER_MINUTE
+          value: "10"
+        - name: ORDER_SUCCESS_RATE
+          value: "0.85"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load-generator-config
+  labels:
+    app: load-generator
+data:
+  LOAD_PATTERN: "steady"
+  REQUESTS_PER_MINUTE: "10"
+  ORDER_SUCCESS_RATE: "0.85"
